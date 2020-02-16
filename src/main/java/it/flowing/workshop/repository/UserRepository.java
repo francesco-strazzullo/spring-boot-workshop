@@ -2,9 +2,9 @@ package it.flowing.workshop.repository;
 
 import com.github.javafaker.Faker;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import it.flowing.workshop.model.User;
+import it.flowing.workshop.model.UserId;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -21,7 +21,8 @@ public class UserRepository {
     Faker faker = new Faker();
     int maxUsers = faker.number().numberBetween(1, 50);
     return IntStream.range(0, maxUsers)
-        .mapToObj((i) -> new User(UUID.randomUUID().toString(), faker.name().fullName()))
+        .mapToObj(
+            (i) -> new User(UserId.create(UUID.randomUUID().toString()), faker.name().fullName()))
         .collect(Collectors.toList());
   }
 
@@ -34,13 +35,13 @@ public class UserRepository {
     return ImmutableList.copyOf(dummyData);
   }
 
-  public Optional<User> get(String id) {
+  public Optional<User> get(UserId id) {
     return dummyData.stream().filter(user -> user.id.equals(id)).findFirst();
   }
 
   public User insert(User toInsert) {
     Preconditions.checkArgument(toInsert.id == null, "Invalid User");
-    User toReturn = toInsert.withId(UUID.randomUUID().toString());
+    User toReturn = toInsert.withId(UserId.create(UUID.randomUUID().toString()));
     dummyData.add(toReturn);
     return toReturn;
   }
@@ -61,8 +62,8 @@ public class UserRepository {
     return toUpdate;
   }
 
-  public void delete(String id) {
-    Preconditions.checkArgument(!Strings.isNullOrEmpty(id), "Invalid Id");
+  public void delete(UserId id) {
+    Preconditions.checkNotNull(id, "Invalid Id");
     dummyData = dummyData.stream().filter(user -> !user.id.equals(id)).collect(Collectors.toList());
   }
 }

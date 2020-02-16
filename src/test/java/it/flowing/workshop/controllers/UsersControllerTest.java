@@ -2,14 +2,16 @@ package it.flowing.workshop.controllers;
 
 import com.google.common.collect.Lists;
 import it.flowing.workshop.model.User;
+import it.flowing.workshop.model.UserId;
 import it.flowing.workshop.repository.UserRepository;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.util.List;
+import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class UsersControllerTest {
 
@@ -24,10 +26,10 @@ class UsersControllerTest {
 
   @Test
   public void list() {
-    List<User> EXPECTATION = Lists.newArrayList(
-            new User("1","Primo"),
-            new User("2","Secondo")
-    );
+    List<User> EXPECTATION =
+        Lists.newArrayList(
+            new User(UserId.create(UUID.randomUUID().toString()), "Primo"),
+            new User(UserId.create(UUID.randomUUID().toString()), "Secondo"));
 
     Mockito.when(userRepository.list()).thenReturn(EXPECTATION);
 
