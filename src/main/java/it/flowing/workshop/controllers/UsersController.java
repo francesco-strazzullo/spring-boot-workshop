@@ -1,10 +1,8 @@
 package it.flowing.workshop.controllers;
 
-import it.flowing.workshop.exceptions.NotFoundException;
 import it.flowing.workshop.model.User;
 import it.flowing.workshop.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,15 +26,8 @@ public class UsersController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<User> get(@PathVariable("id") String id) {
-        try {
-            User user = userService.get(id);
-            return ResponseEntity.ok(user);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        } catch (NotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public User get(@PathVariable("id") String id) {
+        return userService.get(id);
     }
 
     @PostMapping
@@ -45,26 +36,12 @@ public class UsersController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<User> update(@RequestBody User toUpdate, @PathVariable("id") String id) {
-        try {
-            User user = userService.update(id, toUpdate);
-            return ResponseEntity.ok(user);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        } catch (NotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public User update(@RequestBody User toUpdate, @PathVariable("id") String id) {
+        return userService.update(id, toUpdate);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity delete(@PathVariable("id") String id) {
-        try {
-            userService.delete(id);
-            return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        } catch (NotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public void delete(@PathVariable("id") String id) {
+        userService.delete(id);
     }
 }

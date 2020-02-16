@@ -1,5 +1,6 @@
 package it.flowing.workshop.services;
 
+import it.flowing.workshop.exceptions.MalformedUUIDException;
 import it.flowing.workshop.exceptions.NotFoundException;
 import it.flowing.workshop.model.User;
 import it.flowing.workshop.model.UserId;
@@ -18,6 +19,14 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
+    private UserId createUserId(String id) {
+        try {
+            return UserId.create(id);
+        } catch (IllegalArgumentException e) {
+            throw new MalformedUUIDException(e);
+        }
+    }
+
     public List<User> list() {
         return userRepository.list();
     }
@@ -29,7 +38,7 @@ public class UserService {
     }
 
     public User get(String id) {
-        UserId userId = UserId.create(id);
+        UserId userId = createUserId(id);
         return userRepository
                 .get(userId)
                 .orElseThrow(() -> {
@@ -42,7 +51,7 @@ public class UserService {
     }
 
     public User update(String id, User toUpdate) {
-        UserId userId = UserId.create(id);
+        UserId userId = createUserId(id);
         if (!exist(userId)) {
             throw new NotFoundException(userId.toString());
         }
@@ -50,7 +59,7 @@ public class UserService {
     }
 
     public void delete(String id) {
-        UserId userId = UserId.create(id);
+        UserId userId = createUserId(id);
         if (!exist(userId)) {
             throw new NotFoundException(userId.toString());
         }
