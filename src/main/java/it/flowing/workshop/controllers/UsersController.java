@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static it.flowing.workshop.ApiVersion.V1;
 
@@ -28,9 +29,20 @@ public class UsersController {
   }
 
   @GetMapping("/{id}")
-  public User get(@PathVariable("id") String id) {
+  public ResponseEntity<User> get(@PathVariable("id") String id) {
+    try {
+      UUID.fromString(id);
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.badRequest().build();
+    }
+
     Optional<User> maybeUser = userRepository.get(id);
-    return maybeUser.get();
+
+    if (maybeUser.isPresent()) {
+      return ResponseEntity.ok(maybeUser.get());
+    }
+
+    return ResponseEntity.notFound().build();
   }
 
   @PostMapping
