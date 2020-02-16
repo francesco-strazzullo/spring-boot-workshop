@@ -15,8 +15,12 @@ import static it.flowing.workshop.ApiVersion.V1;
 @RequestMapping(value = "/" + V1 + "/users")
 public class UsersController {
 
+    private final UserRepository userRepository;
+
     @Autowired
-    private UserRepository userRepository;
+    public UsersController(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     @GetMapping
     public List<User> list() {
