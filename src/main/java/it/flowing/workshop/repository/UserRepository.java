@@ -1,36 +1,68 @@
 package it.flowing.workshop.repository;
 
 import com.github.javafaker.Faker;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import it.flowing.workshop.model.User;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Component
 public class UserRepository {
-    private final List<User> dummyData;
+  private List<User> dummyData;
 
-    private static List<User> createDummyData(){
-        Faker faker = new Faker();
-        int maxUsers = faker.number().numberBetween(1, 50);
-        return IntStream
-                .range(0, maxUsers)
-                .mapToObj((i) -> new User(
-                        UUID.randomUUID().toString(),
-                        faker.name().fullName()
-                ))
-                .collect(Collectors.toList());
-    }
+  private static List<User> createDummyData() {
+    Faker faker = new Faker();
+    int maxUsers = faker.number().numberBetween(1, 50);
+    return IntStream.range(0, maxUsers)
+        .mapToObj((i) -> new User(UUID.randomUUID().toString(), faker.name().fullName()))
+        .collect(Collectors.toList());
+  }
 
-    public UserRepository() {
-        dummyData = createDummyData();
-    }
+  public UserRepository() {
+    dummyData = createDummyData();
+  }
 
-    public List<User> list() {
-        return ImmutableList.copyOf(dummyData);
-    }
+  public List<User> list() {
+
+    return ImmutableList.copyOf(dummyData);
+  }
+
+  public Optional<User> get(String id) {
+    return dummyData.stream().filter(user -> user.id.equals(id)).findFirst();
+  }
+
+  public User insert(User toInsert) {
+    Preconditions.checkArgument(toInsert.id == null, "Invalid User");
+    User toReturn = toInsert.withId(UUID.randomUUID().toString());
+    dummyData.add(toReturn);
+    return toReturn;
+  }
+
+  public User update(User toUpdate) {
+    Preconditions.checkArgument(toUpdate.id != null, "Invalid User");
+    dummyData =
+        dummyData.stream()
+            .map(
+                user -> {
+                  if (user.id.equals(toUpdate.id)) {
+                    return toUpdate;
+                  }
+
+                  return user;
+                })
+            .collect(Collectors.toList());
+    return toUpdate;
+  }
+
+  public void delete(String id) {
+    Preconditions.checkArgument(!Strings.isNullOrEmpty(id), "Invalid Id");
+    dummyData = dummyData.stream().filter(user -> !user.id.equals(id)).collect(Collectors.toList());
+  }
 }
