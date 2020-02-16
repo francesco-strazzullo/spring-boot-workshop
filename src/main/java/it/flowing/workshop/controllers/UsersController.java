@@ -1,14 +1,13 @@
 package it.flowing.workshop.controllers;
 
+import it.flowing.workshop.exceptions.NotFoundException;
 import it.flowing.workshop.model.User;
-import it.flowing.workshop.model.UserId;
-import it.flowing.workshop.repository.UserRepository;
+import it.flowing.workshop.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 import static it.flowing.workshop.ApiVersion.V1;
 
@@ -16,49 +15,56 @@ import static it.flowing.workshop.ApiVersion.V1;
 @RequestMapping(value = "/" + V1 + "/users")
 public class UsersController {
 
-  private final UserRepository userRepository;
+    private final UserService userService;
 
-  @Autowired
-  public UsersController(UserRepository userRepository) {
-    this.userRepository = userRepository;
-  }
-
-  @GetMapping
-  public List<User> list() {
-    return userRepository.list();
-  }
-
-  @GetMapping("/{id}")
-  public ResponseEntity<User> get(@PathVariable("id") String id) {
-    UserId userId;
-    try {
-      userId = UserId.create(id);
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.badRequest().build();
+    @Autowired
+    public UsersController(UserService userService) {
+        this.userService = userService;
     }
 
-    Optional<User> maybeUser = userRepository.get(userId);
-
-    if (maybeUser.isPresent()) {
-      return ResponseEntity.ok(maybeUser.get());
+    @GetMapping
+    public List<User> list() {
+        return userService.list();
     }
 
-    return ResponseEntity.notFound().build();
-  }
+    @GetMapping("/{id}")
+    public ResponseEntity<User> get(@PathVariable("id") String id) {
+        try {
+            User user = userService.get(id);
+            return ResponseEntity.ok(user);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (NotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 
-  @PostMapping
-  public User create(@RequestBody User toInsert) {
-    return userRepository.insert(toInsert);
-  }
+    @PostMapping
+    public User create(@RequestBody User toInsert) {
+        return userService.insert(toInsert);
+    }
 
-  @PutMapping("/{id}")
-  public User update(@RequestBody User user, @PathVariable("id") String id) {
-    return userRepository.update(user.withId(UserId.create(id)));
-  }
+    @PutMapping("/{id}")
+    public ResponseEntity<User> update(@RequestBody User toUpdate, @PathVariable("id") String id) {
+        try {
+            User user = userService.update(id, toUpdate);
+            return ResponseEntity.ok(user);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (NotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 
-  @DeleteMapping("/{id}")
-  public ResponseEntity delete(@PathVariable("id") String id) {
-    userRepository.delete(UserId.create(id));
-    return ResponseEntity.noContent().build();
-  }
+    @DeleteMapping("/{id}")
+    public ResponseEntity delete(@PathVariable("id") String id) {
+        try {
+            userService.delete(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (NotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }
