@@ -21,11 +21,13 @@ public class UsersController {
     }
 
     @GetMapping
+    @SkipAuthentication
     public List<User> list() {
         return userService.list();
     }
 
     @GetMapping("/{id}")
+    @SkipAuthentication
     public User get(@PathVariable("id") String id) {
         return userService.get(id);
     }
