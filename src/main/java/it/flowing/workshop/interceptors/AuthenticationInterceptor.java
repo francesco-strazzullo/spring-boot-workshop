@@ -22,6 +22,10 @@ public class AuthenticationInterceptor extends HandlerInterceptorAdapter {
                 return true;
             }
 
+            annotation = handlerMethod.getBeanType().getAnnotation(SkipAuthentication.class);
+            if (annotation != null) {
+                return true;
+            }
         }
 
         String authentication = request.getHeader("Authentication");
