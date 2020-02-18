@@ -5,7 +5,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import it.flowing.workshop.model.User;
 import it.flowing.workshop.model.UserId;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,7 +12,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-@Component
 public class MemoryUserRepository implements UserRepository {
     private List<User> dummyData;
 
