@@ -4,18 +4,50 @@ package it.flowing.workshop.repository;
 import it.flowing.workshop.DBConfig;
 import it.flowing.workshop.model.User;
 import it.flowing.workshop.model.UserId;
+import org.apache.commons.dbutils.DbUtils;
+import org.apache.commons.dbutils.QueryRunner;
+import org.apache.commons.dbutils.handlers.MapListHandler;
+import org.apache.commons.dbutils.handlers.ScalarHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.sql.*;
-import java.util.ArrayList;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Component
 public class PostgreSQLUserRepository implements UserRepository {
 
+    private static class Queries {
+        public static final String SELECT_ALL = "SELECT * FROM users";
+        public static final String SELECT_ONE = "SELECT * FROM users WHERE id::text = ?";
+        public static final String INSERT = "INSERT INTO users (\"name\") VALUES (?) RETURNING ID";
+        public static final String UPDATE = "UPDATE users SET \"name\" = ? WHERE id::text = ?";
+        public static final String DELETE = "DELETE FROM users WHERE id::text = ?";
+    }
+
     private DBConfig dbConfig;
+    private MapListHandler beanListHandler = new MapListHandler();
+    private QueryRunner runner = new QueryRunner();
+
+    private Function<Map, User> mapToUser = row -> new User(
+            UserId.create(row.get("id").toString()),
+            row.get("name").toString()
+    );
+
+    private Connection createConnection() throws SQLException {
+        return DriverManager.getConnection(
+                dbConfig.getUrl(),
+                dbConfig.getUsername(),
+                dbConfig.getPassword()
+        );
+    }
 
     @Autowired
     public PostgreSQLUserRepository(DBConfig dbConfig) {
@@ -24,228 +56,121 @@ public class PostgreSQLUserRepository implements UserRepository {
 
     @Override
     public List<User> list() {
-        List<User> toReturn = new ArrayList<>();
         Connection connection = null;
-        Statement stmt = null;
-        ResultSet rs = null;
-
         try {
-            connection = DriverManager.getConnection(
-                    dbConfig.getUrl(),
-                    dbConfig.getUsername(),
-                    dbConfig.getPassword()
+            connection = createConnection();
+
+            List<Map<String, Object>> results = runner.query(
+                    connection,
+                    Queries.SELECT_ALL,
+                    beanListHandler
             );
-            stmt = connection.createStatement();
-            rs = stmt.executeQuery("select * from users");
-            while (rs.next()) {
-                User user = new User(
-                        UserId.create(rs.getString("id")),
-                        rs.getString("name")
-                );
 
-                toReturn.add(user);
-            }
+            return results
+                    .stream()
+                    .map(mapToUser)
+                    .collect(Collectors.toList());
 
-            connection.close();
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         } finally {
-            if (rs != null) {
-                try {
-                    rs.close();
-                } catch (SQLException e) { /* ignored */}
-            }
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException e) { /* ignored */}
-            }
-            if (connection != null) {
-                try {
-                    connection.close();
-                } catch (SQLException e) { /* ignored */}
-            }
+            DbUtils.closeQuietly(connection);
         }
-
-        return toReturn;
     }
 
     @Override
     public Optional<User> get(UserId id) {
         Connection connection = null;
-        Statement stmt = null;
-        ResultSet rs = null;
-
         try {
-            connection = DriverManager.getConnection(
-                    dbConfig.getUrl(),
-                    dbConfig.getUsername(),
-                    dbConfig.getPassword()
+            connection = createConnection();
+
+            List<Map<String, Object>> rows = runner.query(
+                    connection,
+                    Queries.SELECT_ONE,
+                    beanListHandler,
+                    id.toString()
             );
-            stmt = connection.createStatement();
-            rs = stmt.executeQuery("select * from users");
 
-            if (rs.next()) {
-                return Optional.of(new User(
-                        UserId.create(rs.getString("id")),
-                        rs.getString("name")
-                ));
+            if (rows != null && rows.size() >= 1) {
+                Map row = rows.get(0);
+                return Optional.of(mapToUser.apply(row));
             }
-
-            connection.close();
 
             return Optional.empty();
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         } finally {
-            if (rs != null) {
-                try {
-                    rs.close();
-                } catch (SQLException e) { /* ignored */}
-            }
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException e) { /* ignored */}
-            }
-            if (connection != null) {
-                try {
-                    connection.close();
-                } catch (SQLException e) { /* ignored */}
-            }
+            DbUtils.closeQuietly(connection);
         }
-
-        return Optional.empty();
     }
 
     @Override
     public User insert(User toInsert) {
         Connection connection = null;
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
 
         try {
-            connection = DriverManager.getConnection(
-                    dbConfig.getUrl(),
-                    dbConfig.getUsername(),
-                    dbConfig.getPassword()
+            connection = createConnection();
+            ScalarHandler<UUID> uuidHandler = new ScalarHandler<>();
+            UUID id = runner.insert(
+                    connection,
+                    Queries.INSERT,
+                    uuidHandler,
+                    toInsert.name
             );
-            stmt = connection.prepareStatement("INSERT INTO users (\"name\") VALUES (?) RETURNING ID", Statement.RETURN_GENERATED_KEYS);
-            stmt.setString(1, toInsert.name);
-            stmt.execute();
 
-            rs = stmt.getGeneratedKeys();
-
-            if (rs != null && rs.next()) {
-                connection.close();
-                return toInsert.withId(
-                        UserId.create(rs.getString(1))
-                );
+            if (id == null) {
+                throw new RuntimeException("No id generated");
             }
 
-            connection.close();
-
-            throw new RuntimeException("No id generated");
+            return toInsert.withId(
+                    UserId.create(id.toString())
+            );
         } catch (SQLException e) {
             throw new RuntimeException(e);
         } finally {
-            if (rs != null) {
-                try {
-                    rs.close();
-                } catch (SQLException e) { /* ignored */}
-            }
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException e) { /* ignored */}
-            }
-            if (connection != null) {
-                try {
-                    connection.close();
-                } catch (SQLException e) { /* ignored */}
-            }
+            DbUtils.closeQuietly(connection);
         }
     }
 
     @Override
     public User update(User toUpdate) {
         Connection connection = null;
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
 
         try {
-            connection = DriverManager.getConnection(
-                    dbConfig.getUrl(),
-                    dbConfig.getUsername(),
-                    dbConfig.getPassword()
+            connection = createConnection();
+
+            runner.update(
+                    connection,
+                    Queries.UPDATE,
+                    toUpdate.name,
+                    toUpdate.id.toString()
             );
-
-            stmt = connection.prepareStatement("UPDATE users SET \"name\" = ? WHERE id::text = ?");
-            stmt.setString(1, toUpdate.name);
-            stmt.setString(2, toUpdate.id.toString());
-            stmt.execute();
-
-            connection.close();
 
             return toUpdate;
         } catch (SQLException e) {
             throw new RuntimeException(e);
         } finally {
-            if (rs != null) {
-                try {
-                    rs.close();
-                } catch (SQLException e) { /* ignored */}
-            }
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException e) { /* ignored */}
-            }
-            if (connection != null) {
-                try {
-                    connection.close();
-                } catch (SQLException e) { /* ignored */}
-            }
+            DbUtils.closeQuietly(connection);
         }
     }
 
     @Override
     public void delete(UserId id) {
         Connection connection = null;
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
 
         try {
-            connection = DriverManager.getConnection(
-                    dbConfig.getUrl(),
-                    dbConfig.getUsername(),
-                    dbConfig.getPassword()
+            connection = createConnection();
+
+            runner.update(
+                    connection,
+                    Queries.DELETE,
+                    id.toString()
             );
-
-            stmt = connection.prepareStatement("DELETE FROM users WHERE id::text = ?");
-            stmt.setString(1, id.toString());
-            stmt.execute();
-
-            connection.close();
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
         } finally {
-            if (rs != null) {
-                try {
-                    rs.close();
-                } catch (SQLException e) { /* ignored */}
-            }
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException e) { /* ignored */}
-            }
-            if (connection != null) {
-                try {
-                    connection.close();
-                } catch (SQLException e) { /* ignored */}
-            }
+            DbUtils.closeQuietly(connection);
         }
     }
 }
