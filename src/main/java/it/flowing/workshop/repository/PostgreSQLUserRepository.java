@@ -41,9 +41,9 @@ public class PostgreSQLUserRepository implements UserRepository {
 
     private Connection createConnection() throws SQLException {
         return DriverManager.getConnection(
-                dbConfig.getUrl(),
-                dbConfig.getUsername(),
-                dbConfig.getPassword()
+                dbConfig.url,
+                dbConfig.username,
+                dbConfig.password
         );
     }
 
